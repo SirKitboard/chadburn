@@ -19,10 +19,11 @@ const (
 // Config contains the configuration
 type Config struct {
 	Global struct {
-		middlewares.SlackConfig  `mapstructure:",squash"`
-		middlewares.SaveConfig   `mapstructure:",squash"`
-		middlewares.MailConfig   `mapstructure:",squash"`
-		middlewares.GotifyConfig `mapstructure:",squash"`
+		middlewares.SlackConfig   `mapstructure:",squash"`
+		middlewares.DiscordConfig `mapstructure:",squash"`
+		middlewares.SaveConfig    `mapstructure:",squash"`
+		middlewares.MailConfig    `mapstructure:",squash"`
+		middlewares.GotifyConfig  `mapstructure:",squash"`
 	}
 	ExecJobs      map[string]*ExecJobConfig      `gcfg:"job-exec" mapstructure:"job-exec,squash"`
 	RunJobs       map[string]*RunJobConfig       `gcfg:"job-run" mapstructure:"job-run,squash"`
@@ -186,6 +187,7 @@ func (c *Config) InitializeApp(dd bool) error {
 
 func (c *Config) buildSchedulerMiddlewares(sh *core.Scheduler) {
 	sh.Use(middlewares.NewSlack(&c.Global.SlackConfig))
+	sh.Use(middlewares.NewDiscord(&c.Global.DiscordConfig))
 	sh.Use(middlewares.NewSave(&c.Global.SaveConfig))
 	sh.Use(middlewares.NewMail(&c.Global.MailConfig))
 	sh.Use(middlewares.NewGotify(&c.Global.GotifyConfig))
@@ -437,18 +439,20 @@ func (c *Config) dockerLabelsUpdate(labels map[string]map[string]string) {
 
 // ExecJobConfig contains all configuration params needed to build a ExecJob
 type ExecJobConfig struct {
-	core.ExecJob              `mapstructure:",squash"`
-	middlewares.OverlapConfig `mapstructure:",squash"`
-	middlewares.SlackConfig   `mapstructure:",squash"`
-	middlewares.SaveConfig    `mapstructure:",squash"`
-	middlewares.MailConfig    `mapstructure:",squash"`
-	middlewares.GotifyConfig  `mapstructure:",squash"`
-	FromDockerLabel           bool `mapstructure:"fromDockerLabel"`
+	core.ExecJob               `mapstructure:",squash"`
+	middlewares.OverlapConfig  `mapstructure:",squash"`
+	middlewares.SlackConfig    `mapstructure:",squash"`
+	middlewares.DiscordConfig  `mapstructure:",squash"`
+	middlewares.SaveConfig     `mapstructure:",squash"`
+	middlewares.MailConfig     `mapstructure:",squash"`
+	middlewares.GotifyConfig   `mapstructure:",squash"`
+	FromDockerLabel            bool `mapstructure:"fromDockerLabel"`
 }
 
 func (c *ExecJobConfig) buildMiddlewares() {
 	c.ExecJob.Use(middlewares.NewOverlap(&c.OverlapConfig))
 	c.ExecJob.Use(middlewares.NewSlack(&c.SlackConfig))
+	c.ExecJob.Use(middlewares.NewDiscord(&c.DiscordConfig))
 	c.ExecJob.Use(middlewares.NewSave(&c.SaveConfig))
 	c.ExecJob.Use(middlewares.NewMail(&c.MailConfig))
 	c.ExecJob.Use(middlewares.NewGotify(&c.GotifyConfig))
@@ -456,21 +460,23 @@ func (c *ExecJobConfig) buildMiddlewares() {
 
 // RunServiceConfig contains all configuration params needed to build a RunJob
 type RunServiceConfig struct {
-	core.RunServiceJob        `mapstructure:",squash"`
-	middlewares.OverlapConfig `mapstructure:",squash"`
-	middlewares.SlackConfig   `mapstructure:",squash"`
-	middlewares.SaveConfig    `mapstructure:",squash"`
-	middlewares.MailConfig    `mapstructure:",squash"`
-	middlewares.GotifyConfig  `mapstructure:",squash"`
+	core.RunServiceJob         `mapstructure:",squash"`
+	middlewares.OverlapConfig  `mapstructure:",squash"`
+	middlewares.SlackConfig    `mapstructure:",squash"`
+	middlewares.DiscordConfig  `mapstructure:",squash"`
+	middlewares.SaveConfig     `mapstructure:",squash"`
+	middlewares.MailConfig     `mapstructure:",squash"`
+	middlewares.GotifyConfig   `mapstructure:",squash"`
 }
 
 type RunJobConfig struct {
-	core.RunJob               `mapstructure:",squash"`
-	middlewares.OverlapConfig `mapstructure:",squash"`
-	middlewares.SlackConfig   `mapstructure:",squash"`
-	middlewares.SaveConfig    `mapstructure:",squash"`
-	middlewares.MailConfig    `mapstructure:",squash"`
-	middlewares.GotifyConfig  `mapstructure:",squash"`
+	core.RunJob                `mapstructure:",squash"`
+	middlewares.OverlapConfig  `mapstructure:",squash"`
+	middlewares.SlackConfig    `mapstructure:",squash"`
+	middlewares.DiscordConfig  `mapstructure:",squash"`
+	middlewares.SaveConfig     `mapstructure:",squash"`
+	middlewares.MailConfig     `mapstructure:",squash"`
+	middlewares.GotifyConfig   `mapstructure:",squash"`
 
 	// Added for backward compatibility with tests
 	Pull string `default:"true"`
@@ -479,6 +485,7 @@ type RunJobConfig struct {
 func (c *RunJobConfig) buildMiddlewares() {
 	c.RunJob.Use(middlewares.NewOverlap(&c.OverlapConfig))
 	c.RunJob.Use(middlewares.NewSlack(&c.SlackConfig))
+	c.RunJob.Use(middlewares.NewDiscord(&c.DiscordConfig))
 	c.RunJob.Use(middlewares.NewSave(&c.SaveConfig))
 	c.RunJob.Use(middlewares.NewMail(&c.MailConfig))
 	c.RunJob.Use(middlewares.NewGotify(&c.GotifyConfig))
@@ -486,18 +493,20 @@ func (c *RunJobConfig) buildMiddlewares() {
 
 // LocalJobConfig contains all configuration params needed to build a RunJob
 type LocalJobConfig struct {
-	core.LocalJob             `mapstructure:",squash"`
-	middlewares.OverlapConfig `mapstructure:",squash"`
-	middlewares.SlackConfig   `mapstructure:",squash"`
-	middlewares.SaveConfig    `mapstructure:",squash"`
-	middlewares.MailConfig    `mapstructure:",squash"`
-	middlewares.GotifyConfig  `mapstructure:",squash"`
-	FromDockerLabel           bool `mapstructure:"fromDockerLabel" default:"false"`
+	core.LocalJob              `mapstructure:",squash"`
+	middlewares.OverlapConfig  `mapstructure:",squash"`
+	middlewares.SlackConfig    `mapstructure:",squash"`
+	middlewares.DiscordConfig  `mapstructure:",squash"`
+	middlewares.SaveConfig     `mapstructure:",squash"`
+	middlewares.MailConfig     `mapstructure:",squash"`
+	middlewares.GotifyConfig   `mapstructure:",squash"`
+	FromDockerLabel            bool `mapstructure:"fromDockerLabel" default:"false"`
 }
 
 func (c *LocalJobConfig) buildMiddlewares() {
 	c.LocalJob.Use(middlewares.NewOverlap(&c.OverlapConfig))
 	c.LocalJob.Use(middlewares.NewSlack(&c.SlackConfig))
+	c.LocalJob.Use(middlewares.NewDiscord(&c.DiscordConfig))
 	c.LocalJob.Use(middlewares.NewSave(&c.SaveConfig))
 	c.LocalJob.Use(middlewares.NewMail(&c.MailConfig))
 	c.LocalJob.Use(middlewares.NewGotify(&c.GotifyConfig))
@@ -506,6 +515,7 @@ func (c *LocalJobConfig) buildMiddlewares() {
 func (c *RunServiceConfig) buildMiddlewares() {
 	c.RunServiceJob.Use(middlewares.NewOverlap(&c.OverlapConfig))
 	c.RunServiceJob.Use(middlewares.NewSlack(&c.SlackConfig))
+	c.RunServiceJob.Use(middlewares.NewDiscord(&c.DiscordConfig))
 	c.RunServiceJob.Use(middlewares.NewSave(&c.SaveConfig))
 	c.RunServiceJob.Use(middlewares.NewMail(&c.MailConfig))
 	c.RunServiceJob.Use(middlewares.NewGotify(&c.GotifyConfig))
@@ -513,18 +523,20 @@ func (c *RunServiceConfig) buildMiddlewares() {
 
 // LifecycleJobConfig contains all configuration params needed to build a LifecycleJob
 type LifecycleJobConfig struct {
-	core.LifecycleJob         `mapstructure:",squash"`
-	middlewares.OverlapConfig `mapstructure:",squash"`
-	middlewares.SlackConfig   `mapstructure:",squash"`
-	middlewares.SaveConfig    `mapstructure:",squash"`
-	middlewares.MailConfig    `mapstructure:",squash"`
-	middlewares.GotifyConfig  `mapstructure:",squash"`
-	FromDockerLabel           bool `mapstructure:"fromDockerLabel" default:"false"`
+	core.LifecycleJob          `mapstructure:",squash"`
+	middlewares.OverlapConfig  `mapstructure:",squash"`
+	middlewares.SlackConfig    `mapstructure:",squash"`
+	middlewares.DiscordConfig  `mapstructure:",squash"`
+	middlewares.SaveConfig     `mapstructure:",squash"`
+	middlewares.MailConfig     `mapstructure:",squash"`
+	middlewares.GotifyConfig   `mapstructure:",squash"`
+	FromDockerLabel            bool `mapstructure:"fromDockerLabel" default:"false"`
 }
 
 func (c *LifecycleJobConfig) buildMiddlewares() {
 	c.LifecycleJob.Use(middlewares.NewOverlap(&c.OverlapConfig))
 	c.LifecycleJob.Use(middlewares.NewSlack(&c.SlackConfig))
+	c.LifecycleJob.Use(middlewares.NewDiscord(&c.DiscordConfig))
 	c.LifecycleJob.Use(middlewares.NewSave(&c.SaveConfig))
 	c.LifecycleJob.Use(middlewares.NewMail(&c.MailConfig))
 	c.LifecycleJob.Use(middlewares.NewGotify(&c.GotifyConfig))
