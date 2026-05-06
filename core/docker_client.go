@@ -3,8 +3,12 @@ package core
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -235,18 +239,83 @@ func (c *OfficialDockerClient) InspectExec(execID string) (*ExecInspect, error) 
 	}, nil
 }
 
-// PullImage pulls an image from a registry
+// PullImage pulls an image from a registry, using credentials from
+// ~/.docker/config.json when available.
 func (c *OfficialDockerClient) PullImage(imageName string) error {
-	// Use empty options for now
-	resp, err := c.client.ImagePull(c.ctx, imageName, image.PullOptions{})
+	registryAuth, _ := resolveRegistryAuth(imageName)
+
+	resp, err := c.client.ImagePull(c.ctx, imageName, image.PullOptions{
+		RegistryAuth: registryAuth,
+	})
 	if err != nil {
 		return err
 	}
 	defer resp.Close()
 
-	// Read the response to complete the pull
 	_, err = io.Copy(io.Discard, resp)
 	return err
+}
+
+// resolveRegistryAuth reads ~/.docker/config.json and returns a base64-encoded
+// JSON auth string suitable for image.PullOptions.RegistryAuth. Returns an
+// empty string (no error) if credentials are not found, so public images still
+// work without any configuration.
+func resolveRegistryAuth(imageName string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	data, err := os.ReadFile(filepath.Join(home, ".docker", "config.json"))
+	if err != nil {
+		return "", err
+	}
+
+	var cfg struct {
+		Auths map[string]struct {
+			Auth string `json:"auth"`
+		} `json:"auths"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return "", err
+	}
+
+	host := imageRegistryHost(imageName)
+	for key, entry := range cfg.Auths {
+		if entry.Auth == "" {
+			continue
+		}
+		if strings.Contains(key, host) || strings.Contains(host, key) {
+			decoded, err := base64.StdEncoding.DecodeString(entry.Auth)
+			if err != nil {
+				continue
+			}
+			parts := strings.SplitN(string(decoded), ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			authJSON, err := json.Marshal(map[string]string{
+				"username": parts[0],
+				"password": parts[1],
+			})
+			if err != nil {
+				continue
+			}
+			return base64.URLEncoding.EncodeToString(authJSON), nil
+		}
+	}
+
+	return "", nil
+}
+
+// imageRegistryHost extracts the registry hostname from a Docker image name.
+// e.g. "ghcr.io/user/image:tag" -> "ghcr.io", "ubuntu:22.04" -> "index.docker.io"
+func imageRegistryHost(imageName string) string {
+	parts := strings.Split(imageName, "/")
+	if len(parts) > 1 && (strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":")) {
+		return parts[0]
+	}
+	return "index.docker.io"
 }
 
 // WatchEvents watches Docker events and sends them to the provided channel
