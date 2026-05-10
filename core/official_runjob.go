@@ -14,6 +14,7 @@ type OfficialRunJob struct {
 	Image       string       `hash:"true"`
 	Network     string       `default:"bridge" hash:"true"`
 	Pull        string       `default:"missing" hash:"true"`
+	Delete      bool         `default:"true" hash:"true"`
 	User        string       `default:"root" hash:"true"`
 	TTY         bool         `default:"false" hash:"true"`
 	Environment []string     `hash:"true"`
@@ -52,8 +53,10 @@ func (j *OfficialRunJob) Run(ctx *Context) error {
 		return fmt.Errorf("error non-zero exit code: %d", exitCode)
 	}
 
-	// Remove container
-	return j.Client.RemoveContainer(containerID)
+	if j.Delete {
+		return j.Client.RemoveContainer(containerID)
+	}
+	return nil
 }
 
 // Hash returns a hash of all the job attributes
@@ -82,6 +85,7 @@ func (j *OfficialRunJob) startContainer(ctx *Context) (string, error) {
 
 	// Create container config
 	config := &ContainerConfig{
+		Name:         j.GetName(),
 		Image:        j.Image,
 		Cmd:          cmds,
 		Tty:          j.TTY,
