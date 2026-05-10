@@ -56,12 +56,16 @@ func NewConfig(logger core.Logger) *Config {
 
 // BuildFromFile builds a scheduler using the config from a file.
 // Environment variables in the form ${VAR} or $VAR are expanded before parsing.
+// Always returns a non-nil Config so callers can proceed even when there is a
+// parse error (matching the original gcfg.ReadFileInto behaviour).
 func BuildFromFile(filename string, logger core.Logger) (*Config, error) {
+	c := NewConfig(logger)
 	raw, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return c, err
 	}
-	return BuildFromString(os.ExpandEnv(string(raw)), logger)
+	err = gcfg.ReadStringInto(c, os.ExpandEnv(string(raw)))
+	return c, err
 }
 
 // BuildFromString builds a scheduler using the config from a string
