@@ -59,6 +59,7 @@ type Container struct {
 
 // ContainerConfig represents configuration for creating a container
 type ContainerConfig struct {
+	Name         string
 	Image        string
 	Cmd          []string
 	Env          []string

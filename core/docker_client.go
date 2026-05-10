@@ -114,6 +114,21 @@ func (c *OfficialDockerClient) InspectContainer(id string) (*Container, error) {
 
 // CreateContainer creates a new container
 func (c *OfficialDockerClient) CreateContainer(config *ContainerConfig) (*Container, error) {
+	// If a name is requested, remove any stopped container with that name first
+	// so repeated runs don't fail with a name conflict.
+	if config.Name != "" {
+		containers, err := c.client.ContainerList(c.ctx, container.ListOptions{All: true})
+		if err == nil {
+			for _, ct := range containers {
+				for _, n := range ct.Names {
+					if strings.TrimPrefix(n, "/") == config.Name && ct.State != "running" {
+						_ = c.client.ContainerRemove(c.ctx, ct.ID, container.RemoveOptions{})
+					}
+				}
+			}
+		}
+	}
+
 	// Convert our config to Docker's config
 	containerConfig := &container.Config{
 		Image:        config.Image,
@@ -136,7 +151,7 @@ func (c *OfficialDockerClient) CreateContainer(config *ContainerConfig) (*Contai
 	}
 
 	// Create the container
-	resp, err := c.client.ContainerCreate(c.ctx, containerConfig, hostConfig, nil, nil, "")
+	resp, err := c.client.ContainerCreate(c.ctx, containerConfig, hostConfig, nil, nil, config.Name)
 	if err != nil {
 		return nil, err
 	}
