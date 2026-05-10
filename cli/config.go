@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/PremoWeb/Chadburn/core"
 	"github.com/PremoWeb/Chadburn/middlewares"
 
@@ -52,11 +54,14 @@ func NewConfig(logger core.Logger) *Config {
 	return c
 }
 
-// BuildFromFile builds a scheduler using the config from a file
+// BuildFromFile builds a scheduler using the config from a file.
+// Environment variables in the form ${VAR} or $VAR are expanded before parsing.
 func BuildFromFile(filename string, logger core.Logger) (*Config, error) {
-	c := NewConfig(logger)
-	err := gcfg.ReadFileInto(c, filename)
-	return c, err
+	raw, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return BuildFromString(os.ExpandEnv(string(raw)), logger)
 }
 
 // BuildFromString builds a scheduler using the config from a string
