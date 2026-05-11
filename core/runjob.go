@@ -115,13 +115,18 @@ func (j *RunJob) startContainer(ctx *Context) error {
 }
 
 func (j *RunJob) runContainer(ctx *Context) error {
+	ctx.Logger.Noticef("[job-run %q] delete=%v image=%q network=%q", j.GetName(), j.Delete, j.Image, j.Network)
+
 	// Pull the image
+	ctx.Logger.Noticef("[job-run %q] pulling image %q", j.GetName(), j.Image)
 	if err := j.Client.PullImage(j.Image); err != nil {
+		ctx.Logger.Errorf("[job-run %q] pull failed: %v", j.GetName(), err)
 		return fmt.Errorf("error pulling image: %s", err)
 	}
 
 	// Create container config
 	config := &ContainerConfig{
+		Name:         j.GetName(),
 		Image:        j.Image,
 		Cmd:          args.GetArgs(j.GetCommand()),
 		AttachStdout: true,
@@ -139,29 +144,38 @@ func (j *RunJob) runContainer(ctx *Context) error {
 	}
 
 	// Create the container
+	ctx.Logger.Noticef("[job-run %q] creating container (name=%q)", j.GetName(), j.GetName())
 	container, err := j.Client.CreateContainer(config)
 	if err != nil {
+		ctx.Logger.Errorf("[job-run %q] create failed: %v", j.GetName(), err)
 		return fmt.Errorf("error creating container: %s", err)
 	}
+	ctx.Logger.Noticef("[job-run %q] container created id=%s", j.GetName(), container.ID[:12])
 
 	// Start the container
 	err = j.Client.StartContainer(container.ID)
 	if err != nil {
 		return fmt.Errorf("error starting container: %s", err)
 	}
+	ctx.Logger.Noticef("[job-run %q] container started id=%s", j.GetName(), container.ID[:12])
 
 	// Wait for the container to finish
 	exitCode, err := j.Client.WaitContainer(container.ID)
 	if err != nil {
+		ctx.Logger.Errorf("[job-run %q] wait failed: %v", j.GetName(), err)
 		return fmt.Errorf("error waiting for container: %s", err)
 	}
+	ctx.Logger.Noticef("[job-run %q] container %s exited with code %d", j.GetName(), container.ID[:12], exitCode)
 
 	// Remove the container if Delete is true
 	if j.Delete {
+		ctx.Logger.Noticef("[job-run %q] delete=true, removing container %s", j.GetName(), container.ID[:12])
 		err = j.Client.RemoveContainer(container.ID)
 		if err != nil {
 			ctx.Logger.Errorf("error removing container: %s", err)
 		}
+	} else {
+		ctx.Logger.Noticef("[job-run %q] delete=false, container %s kept as %q", j.GetName(), container.ID[:12], j.GetName())
 	}
 
 	if exitCode != 0 {
