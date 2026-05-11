@@ -16,7 +16,7 @@ type RunJob struct {
 	Image     string       `hash:"true"`
 	User      string       `default:"root" hash:"true"`
 	TTY       bool         `default:"false" hash:"true"`
-	Delete    bool         `default:"true" hash:"true"`
+	Delete    *bool        `hash:"true"`
 	Network   string       `hash:"true"`
 	Volume    []string     `hash:"true"`
 }
@@ -115,7 +115,8 @@ func (j *RunJob) startContainer(ctx *Context) error {
 }
 
 func (j *RunJob) runContainer(ctx *Context) error {
-	ctx.Logger.Noticef("[job-run %q] delete=%v image=%q network=%q", j.GetName(), j.Delete, j.Image, j.Network)
+	shouldDelete := j.Delete == nil || *j.Delete
+	ctx.Logger.Noticef("[job-run %q] delete=%v image=%q network=%q", j.GetName(), shouldDelete, j.Image, j.Network)
 
 	// Pull the image
 	ctx.Logger.Noticef("[job-run %q] pulling image %q", j.GetName(), j.Image)
@@ -167,8 +168,7 @@ func (j *RunJob) runContainer(ctx *Context) error {
 	}
 	ctx.Logger.Noticef("[job-run %q] container %s exited with code %d", j.GetName(), container.ID[:12], exitCode)
 
-	// Remove the container if Delete is true
-	if j.Delete {
+	if shouldDelete {
 		ctx.Logger.Noticef("[job-run %q] delete=true, removing container %s", j.GetName(), container.ID[:12])
 		err = j.Client.RemoveContainer(container.ID)
 		if err != nil {

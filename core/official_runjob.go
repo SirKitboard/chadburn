@@ -14,7 +14,7 @@ type OfficialRunJob struct {
 	Image       string       `hash:"true"`
 	Network     string       `default:"bridge" hash:"true"`
 	Pull        string       `default:"missing" hash:"true"`
-	Delete      bool         `default:"true" hash:"true"`
+	Delete      *bool        `hash:"true"`
 	User        string       `default:"root" hash:"true"`
 	TTY         bool         `default:"false" hash:"true"`
 	Environment []string     `hash:"true"`
@@ -29,7 +29,8 @@ func NewOfficialRunJob(c DockerClient) *OfficialRunJob {
 
 // Run executes the job
 func (j *OfficialRunJob) Run(ctx *Context) error {
-	ctx.Logger.Noticef("[job-run %q] delete=%v pull=%q image=%q network=%q", j.GetName(), j.Delete, j.Pull, j.Image, j.Network)
+	shouldDelete := j.Delete == nil || *j.Delete
+	ctx.Logger.Noticef("[job-run %q] delete=%v pull=%q image=%q network=%q", j.GetName(), shouldDelete, j.Pull, j.Image, j.Network)
 
 	// Pull image if needed
 	if j.Pull != "never" {
@@ -63,7 +64,7 @@ func (j *OfficialRunJob) Run(ctx *Context) error {
 		return fmt.Errorf("error non-zero exit code: %d", exitCode)
 	}
 
-	if j.Delete {
+	if shouldDelete {
 		ctx.Logger.Noticef("[job-run %q] delete=true, removing container %s", j.GetName(), containerID[:12])
 		return j.Client.RemoveContainer(containerID)
 	}
