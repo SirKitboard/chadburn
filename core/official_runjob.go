@@ -29,24 +29,34 @@ func NewOfficialRunJob(c DockerClient) *OfficialRunJob {
 
 // Run executes the job
 func (j *OfficialRunJob) Run(ctx *Context) error {
+	ctx.Logger.Noticef("[job-run %q] delete=%v pull=%q image=%q network=%q", j.GetName(), j.Delete, j.Pull, j.Image, j.Network)
+
 	// Pull image if needed
 	if j.Pull != "never" {
+		ctx.Logger.Noticef("[job-run %q] pulling image %q", j.GetName(), j.Image)
 		if err := j.pullImage(); err != nil {
+			ctx.Logger.Errorf("[job-run %q] pull failed: %v", j.GetName(), err)
 			return err
 		}
 	}
 
 	// Create and start container
+	ctx.Logger.Noticef("[job-run %q] creating container (name=%q)", j.GetName(), j.GetName())
 	containerID, err := j.startContainer(ctx)
 	if err != nil {
+		ctx.Logger.Errorf("[job-run %q] startContainer failed: %v", j.GetName(), err)
 		return err
 	}
+	ctx.Logger.Noticef("[job-run %q] container started id=%s", j.GetName(), containerID[:12])
 
 	// Wait for container to finish
+	ctx.Logger.Noticef("[job-run %q] waiting for container %s to exit", j.GetName(), containerID[:12])
 	exitCode, err := j.Client.WaitContainer(containerID)
 	if err != nil {
+		ctx.Logger.Errorf("[job-run %q] wait failed: %v", j.GetName(), err)
 		return err
 	}
+	ctx.Logger.Noticef("[job-run %q] container %s exited with code %d", j.GetName(), containerID[:12], exitCode)
 
 	// Check exit code
 	if exitCode != 0 {
@@ -54,8 +64,10 @@ func (j *OfficialRunJob) Run(ctx *Context) error {
 	}
 
 	if j.Delete {
+		ctx.Logger.Noticef("[job-run %q] delete=true, removing container %s", j.GetName(), containerID[:12])
 		return j.Client.RemoveContainer(containerID)
 	}
+	ctx.Logger.Noticef("[job-run %q] delete=false, container %s kept", j.GetName(), containerID[:12])
 	return nil
 }
 
