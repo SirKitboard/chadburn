@@ -10,15 +10,16 @@ import (
 
 // RunJob represents a job that runs a command in a Docker container
 type RunJob struct {
-	BareJob   `mapstructure:",squash"`
-	Client    DockerClient `json:"-"`
-	Container string       `hash:"true"`
-	Image     string       `hash:"true"`
-	User      string       `default:"root" hash:"true"`
-	TTY       bool         `default:"false" hash:"true"`
-	Delete    *bool        `hash:"true"`
-	Network   string       `hash:"true"`
-	Volume    []string     `hash:"true"`
+	BareJob     `mapstructure:",squash"`
+	Client      DockerClient `json:"-"`
+	Container   string       `hash:"true"`
+	Image       string       `hash:"true"`
+	User        string       `default:"root" hash:"true"`
+	TTY         bool         `default:"false" hash:"true"`
+	Delete      *bool        `hash:"true"`
+	Network     string       `hash:"true"`
+	Volume      []string     `hash:"true"`
+	Environment []string     `hash:"true"`
 }
 
 // NewRunJob creates a new RunJob
@@ -134,6 +135,7 @@ func (j *RunJob) runContainer(ctx *Context) error {
 		AttachStderr: true,
 		Tty:          j.TTY,
 		User:         j.User,
+		Env:          j.Environment,
 	}
 
 	// Add host config if network or volumes are specified
